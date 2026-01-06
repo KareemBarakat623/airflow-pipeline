@@ -1,0 +1,35 @@
+
+version: '3'
+
+services:
+  airflow:
+    image: airflow:latest
+    
+    environment:
+      AIRFLOW__CORE__FERNET_KEY: sgfSma1e308KGZMpkzKpCsJIXvzXlWSGhCYZlgt1C24=
+      AIRFLOW__API__SECRET_KEY: wtG3nbhvpPBOr7699HcwhA==
+      AIRFLOW__API_AUTH__JWT_SECRET: qyb9iWqV0kLLEWaKDk7lgA==
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN}
+    
+    volumes:
+      - ./airflow:/opt/airflow
+
+    ports:
+      - "8080:8080"
+    command: airflow standalone
+
+  metabase:
+    image: metabase/metabase:latest
+    container_name: workspace-metabase
+    ports:
+      - "3000:3000"
+    volumes:
+      - C:\workspace\airflow\sqlite:/sqlite:ro
+      - metabase-data:/metabase-data
+    environment:
+      MB_DB_FILE: /metabase-data/metabase.db
+
+volumes:
+  metabase-data:
