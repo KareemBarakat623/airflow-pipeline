@@ -17,7 +17,7 @@ AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
 AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
 
 # S3 paths
-S3_FULL_LOAD_PATH = f"s3://{S3_BUCKET}/full_load/event_data.parquet"
+S3_FULL_LOAD_PATH = f"s3://{S3_BUCKET}/full_load/event_data.csv"
 S3_INCREMENTAL_BASE = f"s3://{S3_BUCKET}/incremental"
 INCREMENTAL_FILE = "/opt/airflow/data/incremental_rows.json"
 
@@ -200,21 +200,21 @@ def insert_incremental_rows():
                 f"Row {idx}: Inserted new record (ID: {row_dict['id']}, name: {row_dict.get('name', 'N/A')})"
             )
 
-        # Ensure all string columns are properly typed for Parquet
+        # Ensure all string columns are properly typed for CSV
         for col in incremental_df.columns:
             if incremental_df[col].dtype == "object":
                 incremental_df[col] = incremental_df[col].astype(str)
 
-        # Write incremental data to S3 as Parquet
-        parquet_buffer = io.BytesIO()
-        incremental_df.to_parquet(parquet_buffer, index=False, engine="pyarrow")
-        parquet_buffer.seek(0)
+        # Write incremental data to S3 as CSV
+        csv_buffer = io.BytesIO()
+        incremental_df.to_csv(csv_buffer, index=False)
+        csv_buffer.seek(0)
 
         s3_client.put_object(
             Bucket=S3_BUCKET,
-            Key=incremental_key,
-            Body=parquet_buffer.getvalue(),
-            ContentType="application/octet-stream",
+            Key=incremental_key.replace(".parquet", ".csv"),
+            Body=csv_buffer.getvalue(),
+            ContentType="text/csv",
         )
         print(
             f"Wrote {len(incremental_df)} rows to S3: s3://{S3_BUCKET}/{incremental_key}"

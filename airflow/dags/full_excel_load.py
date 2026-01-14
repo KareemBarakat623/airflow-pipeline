@@ -15,7 +15,7 @@ S3_REGION = "eu-north-1"
 s3_client = boto3.client("s3", region_name=S3_REGION)
 
 # S3 paths
-S3_FULL_LOAD_PATH = "full_load/event_data.parquet"
+S3_FULL_LOAD_PATH = "full_load/event_data.csv"
 S3_INCREMENTAL_BASE = "incremental"
 
 
@@ -161,22 +161,22 @@ def run_full_excel_load(**kwargs):
         combined_df = combined_df[existing_columns]
         print(f"Keeping only canonical columns: {existing_columns}")
 
-        # Ensure all string columns are properly typed for Parquet
+        # Ensure all string columns are properly typed for CSV
         for col in combined_df.columns:
             if combined_df[col].dtype == 'object':
                 combined_df[col] = combined_df[col].astype(str)
 
-        # Write full load to S3 as Parquet using shared client with default creds/role
-        # Convert DataFrame to Parquet and upload to S3
-        parquet_buffer = io.BytesIO()
-        combined_df.to_parquet(parquet_buffer, index=False, engine='pyarrow')
-        parquet_buffer.seek(0)
+        # Write full load to S3 as CSV using shared client with default creds/role
+        # Convert DataFrame to CSV and upload to S3
+        csv_buffer = io.BytesIO()
+        combined_df.to_csv(csv_buffer, index=False)
+        csv_buffer.seek(0)
         
         s3_client.put_object(
             Bucket=S3_BUCKET,
             Key=S3_FULL_LOAD_PATH,
-            Body=parquet_buffer.getvalue(),
-            ContentType='application/octet-stream'
+            Body=csv_buffer.getvalue(),
+            ContentType='text/csv'
         )
         print(f"Full load written to S3: s3://{S3_BUCKET}/{S3_FULL_LOAD_PATH}")
 

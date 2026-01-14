@@ -41,7 +41,7 @@ def trigger_dag(payload: dict, dag_id: str = DAG_ID):
             [
                 "docker",
                 "exec",
-                "airflow-pipeline-airflow-1",
+                "workspace-airflow-1",
                 "airflow",
                 "dags",
                 "trigger",
