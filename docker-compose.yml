@@ -1,18 +1,15 @@
-
-version: '3'
+version: "3"
 
 services:
   airflow:
-    image: airflow:latest
-    
+    image: apache/airflow:2.7.3
+
     environment:
-      AIRFLOW__CORE__FERNET_KEY: sgfSma1e308KGZMpkzKpCsJIXvzXlWSGhCYZlgt1C24=
-      AIRFLOW__API__SECRET_KEY: wtG3nbhvpPBOr7699HcwhA==
-      AIRFLOW__API_AUTH__JWT_SECRET: qyb9iWqV0kLLEWaKDk7lgA==
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
-      AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN}
-    
+      AWS_DEFAULT_REGION: ${AWS_REGION}
+
+
     volumes:
       - ./airflow:/opt/airflow
 
