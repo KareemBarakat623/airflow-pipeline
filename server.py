@@ -7,6 +7,15 @@ import datetime
 import hashlib
 import time
 import os
+import yaml
+
+# Load configuration from config.yaml
+def load_config():
+    config_path = os.path.join(os.path.dirname(__file__), "config.yaml")
+    with open(config_path, 'r', encoding='utf-8') as f:
+        return yaml.safe_load(f)
+
+config = load_config()
 
 app = FastAPI()
 
@@ -27,6 +36,7 @@ class FullLoadEvent(BaseModel):
 
 DAG_ID = "event_based_load"
 FULL_LOAD_DAG_ID = "full_excel_load"
+AIRFLOW_CONTAINER = config['airflow']['container_name']
 
 
 def trigger_dag(payload: dict, dag_id: str = DAG_ID):
@@ -41,7 +51,7 @@ def trigger_dag(payload: dict, dag_id: str = DAG_ID):
             [
                 "docker",
                 "exec",
-                "workspace-airflow-1",
+                AIRFLOW_CONTAINER,
                 "airflow",
                 "dags",
                 "trigger",

@@ -9,17 +9,27 @@ import os
 import re
 import time
 import io
+import yaml
 
-# AWS S3 Configuration
-S3_BUCKET = "s3-joacademy-event-data-bucket-211"
-S3_REGION = "eu-north-1"
-AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
-AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
+# Load configuration from config.yaml
+def load_config():
+    config_path = "/opt/airflow/config.yaml"
+    with open(config_path, 'r', encoding='utf-8') as f:
+        return yaml.safe_load(f)
+
+config = load_config()
+
+# AWS S3 Configuration from config.yaml
+S3_BUCKET = config['s3']['bucket']
+S3_REGION = config['aws']['region']
+AWS_ACCESS_KEY_ID = config['aws']['access_key_id']
+AWS_SECRET_ACCESS_KEY = config['aws']['secret_access_key']
+AWS_SESSION_TOKEN = config['aws'].get('session_token')  # Optional for session-based accounts
 
 # S3 paths
-S3_FULL_LOAD_PATH = f"s3://{S3_BUCKET}/full_load/event_data.csv"
-S3_INCREMENTAL_BASE = f"s3://{S3_BUCKET}/incremental"
-INCREMENTAL_FILE = "/opt/airflow/data/incremental_rows.json"
+S3_FULL_LOAD_PATH = f"s3://{S3_BUCKET}/{config['s3']['full_load_path']}"
+S3_INCREMENTAL_BASE = f"s3://{S3_BUCKET}/{config['s3']['incremental_base']}"
+INCREMENTAL_FILE = config['airflow']['incremental_file']
 
 COLUMN_MAPPING = {
     0: "name",
@@ -137,8 +147,16 @@ def insert_incremental_rows():
     print(f"Columns: {incremental_df.columns.tolist()}")
 
     try:
-        # Initialize S3 client (use env/role credentials, including session tokens if provided)
-        s3_client = boto3.client("s3", region_name=S3_REGION)
+        # Initialize S3 client with credentials from config.yaml
+        s3_config = {
+            'region_name': S3_REGION,
+            'aws_access_key_id': AWS_ACCESS_KEY_ID,
+            'aws_secret_access_key': AWS_SECRET_ACCESS_KEY
+        }
+        if AWS_SESSION_TOKEN:
+            s3_config['aws_session_token'] = AWS_SESSION_TOKEN
+        
+        s3_client = boto3.client("s3", **s3_config)
 
         # Read existing full load data for duplicate checking
         try:
@@ -200,25 +218,25 @@ def insert_incremental_rows():
                 f"Row {idx}: Inserted new record (ID: {row_dict['id']}, name: {row_dict.get('name', 'N/A')})"
             )
 
-        # Ensure all string columns are properly typed for CSV
-        for col in incremental_df.columns:
-            if incremental_df[col].dtype == "object":
-                incremental_df[col] = incremental_df[col].astype(str)
-
-        # Write incremental data to S3 as CSV
-        csv_buffer = io.BytesIO()
-        incremental_df.to_csv(csv_buffer, index=False)
-        csv_buffer.seek(0)
+        # Write incremental data to S3 as Parquet
+        parquet_buffer = io.BytesIO()
+        incremental_df.to_parquet(parquet_buffer, engine='pyarrow', index=False)
+        parquet_buffer.seek(0)
 
         s3_client.put_object(
             Bucket=S3_BUCKET,
-            Key=incremental_key.replace(".parquet", ".csv"),
-            Body=csv_buffer.getvalue(),
-            ContentType="text/csv",
+            Key=incremental_key,
+            Body=parquet_buffer.getvalue(),
+            ContentType="application/octet-stream",
         )
         print(
             f"Wrote {len(incremental_df)} rows to S3: s3://{S3_BUCKET}/{incremental_key}"
         )
+        
+        # Trigger Glue crawler to catalog the new incremental data
+        from glue_utils import start_crawler
+        print("Triggering Glue crawler for incremental data...")
+        start_crawler('incremental')
 
         # Clean up temporary JSON file
         try:

@@ -1,0 +1,34 @@
+# AWS Configuration Example
+# Copy this file to config.yaml and fill in your actual credentials
+
+aws:
+  access_key_id: "YOUR_AWS_ACCESS_KEY_ID"
+  secret_access_key: "YOUR_AWS_SECRET_ACCESS_KEY"
+  session_token: "YOUR_AWS_SESSION_TOKEN"  # Required for session-based accounts
+  region: "eu-north-1"
+
+# S3 Configuration
+s3:
+  bucket: "s3-joacademy-event-data-bucket-211"
+  full_load_path: "full_load/event_data.parquet"
+  incremental_base: "incremental"
+
+# AWS Glue Configuration
+glue:
+  database_name: "airflow_event_data_db"
+  service_role_arn: "arn:aws:iam::YOUR_ACCOUNT_ID:role/glue-service-role"
+  crawlers:
+    full_load:
+      name: "airflow-full-load-crawler"
+      description: "Crawls full load parquet data from S3"
+      s3_path: "s3://YOUR_BUCKET/full_load/"
+    incremental:
+      name: "airflow-incremental-crawler"
+      description: "Crawls incremental parquet data partitioned by date"
+      s3_path: "s3://YOUR_BUCKET/incremental/"
+
+# Airflow Configuration
+airflow:
+  container_name: "workspace-airflow-1"
+  data_dir: "/opt/airflow/data"
+  incremental_file: "/opt/airflow/data/incremental_rows.json"

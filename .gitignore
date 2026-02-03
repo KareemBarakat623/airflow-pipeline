@@ -5,6 +5,7 @@ __pycache__/
 # Airflow logs and temp
 airflow/logs/
 airflow/__pycache__/
+airflow/data
 
 # VS Code / IDE
 .vscode/
@@ -13,6 +14,8 @@ airflow/__pycache__/
 # Env files
 .env
 .env.local
+config.yaml
+airflow/config.yaml
 
 # AWS credentials CSV
 airflow/data/*_accessKeys.csv
@@ -23,5 +26,7 @@ Thumbs.db
 
 # SQLite / backups
 *.db
-*.db-*.
+*.db-*
 *.db.bak*
+airflow/airflow.db-wal
+airflow/airflow.db-shm

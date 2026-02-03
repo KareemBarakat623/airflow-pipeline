@@ -2,16 +2,11 @@ version: "3"
 
 services:
   airflow:
-    image: apache/airflow:2.7.3
-
-    environment:
-      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
-      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
-      AWS_DEFAULT_REGION: ${AWS_REGION}
-
+    image: apache/airflow:latest
 
     volumes:
       - ./airflow:/opt/airflow
+      - ./config.yaml:/opt/airflow/config.yaml:ro
 
     ports:
       - "8080:8080"

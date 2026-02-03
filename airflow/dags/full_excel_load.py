@@ -8,15 +8,26 @@ import os
 import re
 import json
 import io
+import yaml
 
-# AWS S3 Configuration
-S3_BUCKET = "s3-joacademy-event-data-bucket-211"
-S3_REGION = "eu-north-1"
-s3_client = boto3.client("s3", region_name=S3_REGION)
+# Load configuration from config.yaml
+def load_config():
+    config_path = "/opt/airflow/config.yaml"
+    with open(config_path, 'r', encoding='utf-8') as f:
+        return yaml.safe_load(f)
+
+config = load_config()
+
+# AWS S3 Configuration from config.yaml
+S3_BUCKET = config['s3']['bucket']
+S3_REGION = config['aws']['region']
+AWS_ACCESS_KEY_ID = config['aws']['access_key_id']
+AWS_SECRET_ACCESS_KEY = config['aws']['secret_access_key']
+AWS_SESSION_TOKEN = config['aws'].get('session_token')  # Optional for session-based accounts
 
 # S3 paths
-S3_FULL_LOAD_PATH = "full_load/event_data.csv"
-S3_INCREMENTAL_BASE = "incremental"
+S3_FULL_LOAD_PATH = config['s3']['full_load_path']
+S3_INCREMENTAL_BASE = config['s3']['incremental_base']
 
 
 def clean_and_validate_mobile(mobile):
@@ -65,6 +76,17 @@ def run_full_excel_load(**kwargs):
 
     try:
         print("Connecting to AWS S3...")
+        
+        # Initialize S3 client with credentials from config.yaml
+        s3_config = {
+            'region_name': S3_REGION,
+            'aws_access_key_id': AWS_ACCESS_KEY_ID,
+            'aws_secret_access_key': AWS_SECRET_ACCESS_KEY
+        }
+        if AWS_SESSION_TOKEN:
+            s3_config['aws_session_token'] = AWS_SESSION_TOKEN
+        
+        s3_client = boto3.client("s3", **s3_config)
 
         dag_run = kwargs.get('dag_run')
         conf = dag_run.conf if dag_run else {}
@@ -161,24 +183,28 @@ def run_full_excel_load(**kwargs):
         combined_df = combined_df[existing_columns]
         print(f"Keeping only canonical columns: {existing_columns}")
 
-        # Ensure all string columns are properly typed for CSV
+        # Ensure object columns are treated as strings for Parquet
         for col in combined_df.columns:
             if combined_df[col].dtype == 'object':
                 combined_df[col] = combined_df[col].astype(str)
 
-        # Write full load to S3 as CSV using shared client with default creds/role
-        # Convert DataFrame to CSV and upload to S3
-        csv_buffer = io.BytesIO()
-        combined_df.to_csv(csv_buffer, index=False)
-        csv_buffer.seek(0)
+        # Write full load to S3 as Parquet
+        parquet_buffer = io.BytesIO()
+        combined_df.to_parquet(parquet_buffer, engine='pyarrow', index=False)
+        parquet_buffer.seek(0)
         
         s3_client.put_object(
             Bucket=S3_BUCKET,
             Key=S3_FULL_LOAD_PATH,
-            Body=csv_buffer.getvalue(),
-            ContentType='text/csv'
+            Body=parquet_buffer.getvalue(),
+            ContentType='application/octet-stream'
         )
         print(f"Full load written to S3: s3://{S3_BUCKET}/{S3_FULL_LOAD_PATH}")
+        
+        # Trigger Glue crawler to catalog the new data
+        from glue_utils import start_crawler
+        print("Triggering Glue crawler for full load data...")
+        start_crawler('full_load')
 
     except Exception as e:
         print(f"Error in run_full_excel_load: {str(e)}")
