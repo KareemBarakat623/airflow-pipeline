@@ -11,7 +11,7 @@ aws:
 s3:
   bucket: "s3-joacademy-event-data-bucket-211"
   full_load_path: "full_load/event_data.parquet"
-  incremental_base: "incremental"
+  incremental_base: "full_load"
 
 # AWS Glue Configuration
 glue:
@@ -25,7 +25,7 @@ glue:
     incremental:
       name: "airflow-incremental-crawler"
       description: "Crawls incremental parquet data partitioned by date"
-      s3_path: "s3://YOUR_BUCKET/incremental/"
+      s3_path: "s3://YOUR_BUCKET/full_load/"
 
 # Airflow Configuration
 airflow:

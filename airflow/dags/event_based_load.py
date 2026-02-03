@@ -28,7 +28,7 @@ AWS_SESSION_TOKEN = config['aws'].get('session_token')  # Optional for session-b
 
 # S3 paths
 S3_FULL_LOAD_PATH = f"s3://{S3_BUCKET}/{config['s3']['full_load_path']}"
-S3_INCREMENTAL_BASE = f"s3://{S3_BUCKET}/{config['s3']['incremental_base']}"
+S3_INCREMENTAL_BASE = config['s3']['incremental_base']
 INCREMENTAL_FILE = config['airflow']['incremental_file']
 
 COLUMN_MAPPING = {
@@ -176,7 +176,7 @@ def insert_incremental_rows():
         today = datetime.utcnow()
         date_partition = today.strftime("%Y/%m/%d")
         timestamp_str = today.isoformat().replace(":", "-").split(".")[0]
-        incremental_key = f"incremental/{date_partition}/event_{timestamp_str}.parquet"
+        incremental_key = f"{S3_INCREMENTAL_BASE}/{date_partition}/event_{timestamp_str}.parquet"
 
         # Check for duplicates using composite key
         for idx, row in incremental_df.iterrows():
@@ -233,10 +233,10 @@ def insert_incremental_rows():
             f"Wrote {len(incremental_df)} rows to S3: s3://{S3_BUCKET}/{incremental_key}"
         )
         
-        # Trigger Glue crawler to catalog the new incremental data
+        # Trigger Glue crawler to catalog the appended data
         from glue_utils import start_crawler
-        print("Triggering Glue crawler for incremental data...")
-        start_crawler('incremental')
+        print("Triggering Glue crawler for full load data...")
+        start_crawler('full_load')
 
         # Clean up temporary JSON file
         try:
