@@ -81,7 +81,6 @@ def run_full_excel_load(**kwargs):
         s3_config = {
             'region_name': S3_REGION,
             'aws_access_key_id': AWS_ACCESS_KEY_ID,
-            'aws_secret_access_key': AWS_SECRET_ACCESS_KEY
         }
         if AWS_SESSION_TOKEN:
             s3_config['aws_session_token'] = AWS_SESSION_TOKEN
